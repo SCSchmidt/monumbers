@@ -1,0 +1,437 @@
+---
+title: "Monumentality by Numbers"
+author:
+  - Hageneuer, Sebastian
+  - Schmidt, Sophie
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    bookdown::word_document2:
+      fig_caption: yes
+      reference_docx: "../templates/template.docx" # Insert path for the DOCX file
+keywords: |
+  quantification; regression analysis; size and effort; monumentality
+---
+
+
+```{r include=FALSE}
+
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  eval = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  echo = TRUE,
+  include = TRUE,
+  cache = TRUE,
+  comment = "#>",
+  fig.path = "../figures/",
+  fig.width = 8, 
+  fig.height = 6
+)
+```
+
+## intro
+
+This R package offers the code to the calculations described in:
+Hageneuer, S. / Schmidt, S., Monumentality by Numbers, in: Hageneuer et al. (Hrsg.), Size Matters - Understanding Monumentality across ancient Civilizations (transcript-Verlag Bielefeld 2019).
+
+```{r load data}
+uebersicht <- read.csv2("../data/raw_data/uebersicht3.csv", sep = "\t", dec=",",  fileEncoding="UTF-8")
+
+# load needed packages
+library(tidyverse)
+library(ggrepel)
+library(ggpmisc)
+library(RColorBrewer)
+library(reshape2)
+library(scales)
+library(mgcv)
+```
+
+# Effort calculation
+
+Aim of this part: Sum the different materials (e.g. differently coloured ceramic cones) that are going to be analysed together and calculate the effort, which is dependant on the volume of different materials. Sum volume and effort of each building.
+
+```{r effort}
+
+# summing data, create table with all relevant volumes of material categories
+
+aufwand <- data.frame(uebersicht$X, uebersicht$Gebaeude, uebersicht$Mriemchen + uebersicht$Mlehmziegel, uebersicht$Mlehm, uebersicht$Mlehm_g + uebersicht$Mlehm_w,  uebersicht$Mschilf, uebersicht$Mholz, uebersicht$Masphalt + uebersicht$Kalksteinplatten, (uebersicht$Mkeramikstifte_r + uebersicht$Mkeramikstifte_schw + uebersicht$Mkeramikstifte_w + uebersicht$Mkeramikstifte_g + uebersicht$Mflaschen), uebersicht$MasseSteinstifte, uebersicht$Mkunststein)
+colnames(aufwand)[3] <- "Mziegel" # Riemchen sind Ziegel!   # rename column to Mziegel = mass of mud bricks
+colnames(aufwand)[5] <- "MFarblehm" # gelber und weißer     # rename column to MFarblehm = mass of coloured clay
+colnames(aufwand)[8] <- "MsonstMat" # Apshalt und Kalkstein    # rename column to MsonstMat = mass of other materials
+colnames(aufwand)[9] <- "MKeramikZier" # Keramische Zierelemente: Flaschen und Keramikstifte # rename column to MKeramikzier = mass of ceramic decoration
+colnames(aufwand)[10] <- "MSteinstifte" # Steinstifte untersch. Farben    # rename column to MSteinstifte = mass of stone cones
+
+# sum the volumes
+aufwand$summe_volumen <- aufwand$Mziegel + aufwand$uebersicht.Mlehm + aufwand$uebersicht.Mschilf + aufwand$uebersicht.Mholz + aufwand$MsonstMat + aufwand$MSteinstifte + aufwand$MKeramikZier + aufwand$MFarblehm + uebersicht$Mkunststein
+
+# multiply with effort factor
+aufwand$Lehm <- aufwand$uebersicht.Mlehm*1
+aufwand$Schilf <- aufwand$uebersicht.Mschilf*1
+aufwand$Farblehm <- aufwand$MFarblehm*2
+aufwand$Ziegel <- aufwand$Mziegel*4
+aufwand$KeramikZier <- aufwand$MKeramikZier*4
+aufwand$holz <- aufwand$uebersicht.Mholz*7
+aufwand$Steinstifte <- aufwand$MSteinstifte*8
+aufwand$sonstMat <- aufwand$MsonstMat*12
+aufwand$Kunststein<- uebersicht$Mkunststein*16
+
+# sum all effort
+aufwand$summe_aufwand <- aufwand$Lehm + aufwand$Schilf + aufwand$Farblehm  + aufwand$Ziegel + aufwand$holz + aufwand$KeramikZier  +  aufwand$sonstMat + aufwand$Steinstifte + aufwand$Kunststein
+
+
+```
+
+
+
+# Analyse the middle-hall buildings quantitatively
+Aim of the following code chunk: We subsetted a larger data frame for just the middle-hall buildings. Calculations later showed we need the data frame of middle-hall buildings without the stone cone building as well.
+
+
+
+```{r middle-hall-buildings}
+## subset and remove Stone-Cone Building
+
+aufwand_MSG <- subset(aufwand, uebersicht.Gebaeude == "Mittelsaalgebaeude") 
+aufwand_MSG_oSSG <- aufwand_MSG[-9,] ## remove stone-cone building 
+
+```
+
+
+## amount of material
+Aim: Create a stacked bar plot, in which we can see the amount of different materials used for each building. Absolute numbers used so the stack shows the absolute size of the building.
+
+```{r compare buildings for amount of materials used}
+
+# remove unwanted data: effort calculations not needed
+
+vol_MSG3 <- aufwand_MSG
+vol_MSG3$category <- row.names(vol_MSG3)
+vol_MSG3 <- vol_MSG3[,1:12]
+
+# melt dataframe
+
+vol_MSG3_m <- melt(vol_MSG3, id.vars = c("uebersicht.X", "uebersicht.Gebaeude", "summe_volumen"))
+
+
+vol_MSG3_m <- vol_MSG3_m %>%
+  arrange(summe_volumen, uebersicht.X) %>%               # sort the dataframe for its size
+  mutate(uebersicht.X = factor(uebersicht.X, unique(uebersicht.X))) # change factor levels to how they've been arranged above
+
+vol_MSG3_m$variable <- ordered(vol_MSG3_m$variable, levels = c("Mziegel", "uebersicht.Mlehm", "MFarblehm", "uebersicht.Mschilf",  "uebersicht.Mholz", "MKeramikZier", "MSteinstifte", "MsonstMat", "uebersicht.Mkunststein")) # order variables for the stacked bar plot so they are always in the same order (to compare with the following bar plot)
+
+
+ggplot(data = vol_MSG3_m)+
+  geom_bar(aes(x = uebersicht.X, y = value, fill = variable),
+           stat = "identity",
+           position = "stack")+
+   scale_y_continuous("Size of the building (cubic meter)")+
+  labs(x = "")+
+      theme_bw()+
+    theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 12))+
+    scale_fill_brewer(palette = "Set1",
+                    breaks = c("Mziegel", "uebersicht.Mlehm", "MFarblehm", "uebersicht.Mschilf",  "uebersicht.Mholz", "MKeramikZier", "MSteinstifte", "MsonstMat", "uebersicht.Mkunststein"),
+                    labels = c("Mud bricks", "Clay",  "Colored Clay", "Reed", "Timber", "Ceramic Decoration", "Others", "Stone Cones", "Cast Stone"))+
+  guides(fill=guide_legend(title=NULL))
+
+ggsave("../figures/Mittelsaalgebaeude_MASSE.eps", width = 20, height = 15, units = "cm") # save plot for publication
+
+```
+
+
+## How much effort do the materials imply?
+Aim: Create a stacked bar plot, in which we can see the effort of the different materials used for each building.Percentage used so the stack shows composition of material effort without regard to absolute size of the building.
+
+```{r Compare different amounts of effort regarding material}
+
+aufwand_MSG2 <- aufwand_MSG
+#remove unwanted info: no volumes needed
+aufwand_MSG2$category <- row.names(aufwand_MSG2)
+aufwand_MSG2 <- select(aufwand_MSG2, -starts_with ("uebersicht.M"))
+aufwand_MSG2 <- select(aufwand_MSG2, -starts_with ("M"))
+
+aufwand_MSG2 <- aufwand_MSG2[,1:12]
+
+# melt data 
+
+aufwand_MSG_m <- melt(aufwand_MSG2, id.vars = c("uebersicht.X", "uebersicht.Gebaeude", "summe_volumen"))
+
+aufwand_MSG_m <- aufwand_MSG_m %>%
+  arrange(summe_volumen, uebersicht.X, variable) %>%               # sort the dataframe for its size
+  mutate(uebersicht.X = factor(uebersicht.X, unique(uebersicht.X))) # change factor levels to how they've been arranged above
+
+aufwand_MSG_m$variable <- ordered(aufwand_MSG_m$variable, levels = c("Ziegel","Lehm", "Farblehm", "Schilf", "holz", "KeramikZier", "sonstMat", "Steinstifte", "Kunststein")) # order variables for the stacked bar plot so they are always in the same order (to compare with the bar plot before)
+
+
+ggplot(data = aufwand_MSG_m)+
+  geom_bar(aes(x = uebersicht.X, y = value, fill = variable),
+           stat = "identity",
+           position = "fill")+
+   scale_y_continuous("Relative effort", labels = percent_format())+
+  theme_bw()+
+  scale_fill_brewer(palette = "Set1",
+                    breaks =c("Ziegel","Lehm", "Farblehm", "Schilf", "holz", "KeramikZier", "sonstMat", "Steinstifte", "Kunststein"),
+                    labels = c("Mud bricks", "Clay",  "Colored Clay", "Reed", "Timber", "Ceramic Decoration", "Others", "Stone Cones", "Cast Stone"))+
+  labs(x = "")+
+    theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 12))+
+  guides(fill=guide_legend(title=NULL))
+
+ggsave("../figures/Mittelsaalgebaeude_AUFWAND.eps", width = 20, height = 15, units = "cm") #save for publication
+
+
+```
+
+
+# Regression analysis
+
+Aim: Analyse the relationship between size and effort.
+Starting hypothesis: linear relatoionship between size and effort. This gives a fairly good R²-value, but could be better. The stone-cone building doesn't fit well. Also the residual analysis (see below) shows there's a relationship between residuals and size. Therefore two options:
+1. linear relationship without stone cone building
+2. test non-linear regressions
+
+## Linear regressions
+
+```{r Diagram linear regression, fig.height=10, fig.width=12}
+
+ggplot(data = aufwand_MSG)+
+  geom_point(aes(x = summe_volumen,            # point cloud all middle-hall-buildings
+                 y = summe_aufwand))+
+  geom_smooth(data = aufwand_MSG,           # regression all middle-hall-buildings -> bad fit
+              method='lm',
+              se = FALSE,      # no confidence intervall
+              aes(x = summe_volumen,
+                  y = summe_aufwand, 
+                  colour = "black" )) + 
+  stat_poly_eq(data = aufwand_MSG,          # Information on regression all middle hall buidlings
+               aes(x = summe_volumen,
+                   y = summe_aufwand,
+                   label =  paste(..eq.label..,  # equation of regression line
+                                  ..adj.rr.label..,   # adjusted R-squared
+                                  sep = "~~~~")),
+               rr.digits = 4,  # 4 digits behind point
+               formula = y~x, 
+               parse = TRUE,
+               size = 5,
+               color = "black",                  
+               label.y.npc = 0.8) +
+       stat_fit_glance(data = aufwand_MSG, # p value of regression all middle hall buildings
+                aes(x = summe_volumen,
+                    y = summe_aufwand, 
+                    label = paste("p-value: ",signif(..p.value.., digits = 4))),
+                    label.y.npc = 0.8,
+                  size = 5,
+                   color = "black", 
+                  method = "lm", 
+                  method.args = list(formula = y ~ x),
+                  geom = "text" ) +
+   geom_smooth(data = aufwand_MSG_oSSG,
+              method='lm',                      # regression for middle-hall-buildings withouth stone cone building
+              se = FALSE,      ## no confidence intervall
+              aes(x = summe_volumen,
+                   y = summe_aufwand, colour = "gray50")) +
+  stat_poly_eq(data = aufwand_MSG_oSSG,           # info on regression for middle-hall buildings without stone-cone building
+               aes(x = summe_volumen,
+                    y = summe_aufwand,
+                   label =  paste(..eq.label.., 
+                                  ..adj.rr.label..,
+                                  sep = "~~~~")),
+               rr.digits = 4,
+               formula = y~x, 
+               parse = TRUE,
+               size = 5,
+               color = "gray50",
+               label.y.npc = 0.7)+            # Y-coordinate for this info
+     stat_fit_glance(data = aufwand_MSG_oSSG,  # p-value
+                aes(x = summe_volumen,
+                    y = summe_aufwand, 
+                    label = paste("p-value: ",signif(..p.value.., digits = 5))),
+                    label.y.npc = 0.7,
+                  size = 5,
+                   color = "gray50", 
+                  method = "lm", 
+                  method.args = list(formula = y ~ x),
+                  geom = "text")+               
+  geom_label_repel(aes(x = summe_volumen,  # label the points
+                        y = summe_aufwand,
+                       label = uebersicht.X),
+                   box.padding = 0.35,             # bounding box of label
+                   point.padding = 0.5,
+                   size = 5,
+                   nudge_x = 0,
+                   nudge_y = 0.05,                 
+                   direction = "y")+
+  scale_colour_manual(name="Linear model",
+                      values=c("black", "gray50"),
+                      breaks=c("black", "gray50"),
+                      labels=c("for all middle-hall buildings", "without the Stone-Cone Building"))+
+  labs(y = "Relative effort index", 
+       x = expression(Size~of~buidings~(m^{3})))+
+  theme(text = element_text(size=15))+
+   theme(legend.position="bottom", legend.text = element_text(size = 12))
+
+ggsave("../figures/Mittelsaalgebäude_vgl.eps", width = 20, height = 20, units = "cm")
+
+
+```
+
+ 
+
+## Non-linear regressions
+Aim: Test different non-linear regressions in comparison to linear regression model (of all middle-hall buildings). Two chosen: LOESS because it supposedly doesn't weigh outliers so much (Baxter 2015: 80-82) and GAM, with a relative simple y ~ poly(x, 2)-formula. Visualisation and summary of both methods for evaluation.
+
+```{r non-linear regression comparison}
+# comparison of different regressions of all middle hall buildings
+
+
+ggplot(data = aufwand_MSG)+
+  geom_point(aes(x = summe_volumen,            # point cloud
+                 y = summe_aufwand))+
+  geom_smooth(data = aufwand_MSG,           # linear regression for middle-hall buildings
+              method='lm',
+              se = FALSE,     
+              aes(x = summe_volumen,
+                  y = summe_aufwand,
+                  colour = "black" )) +
+    geom_smooth(data = aufwand_MSG,
+              method='loess',                      # not-linear regression for all middle hall buildins: loess
+              se = TRUE,      # confidence intervall 
+              aes(x = summe_volumen,
+                  y = summe_aufwand, colour = "gray50")) +
+  geom_smooth(data = aufwand_MSG,
+              method='gam',                      # not-linear regression for all middle hall buildins: gam
+              formula = y ~ poly(x, 2),
+              se = TRUE,      # confidence intervall yes please
+              aes(x = summe_volumen,
+                  y = summe_aufwand, colour = "gray20")) +
+    geom_label_repel(aes(x = summe_volumen,  
+                       y = summe_aufwand,
+                       label = uebersicht.X),
+                   box.padding = 0.35,             
+                   point.padding = 0.5,
+                   size = 5,
+                   nudge_x = 0,
+                   nudge_y = 0.05,                 
+                   direction = "y")+
+  scale_colour_manual(name="regression model",
+                      values=c("black", "gray50", "gray20"),
+                      breaks=c("black", "gray50", "gray20"),
+                      labels=c("linear model", "loess", "gam"))+
+  labs(y = "Relative effort index",
+       x = expression(Size~of~buidings~(m^{3})))+
+  theme(text = element_text(size=15))+
+  theme(legend.position="bottom", legend.text = element_text(size = 12))
+
+fit3 <- loess(summe_aufwand ~ summe_volumen, data = aufwand_MSG)
+
+fit4 <- gam(formula = summe_aufwand  ~ poly(summe_volumen, 2), data = aufwand_MSG)
+
+summary(fit3)
+
+summary(fit4)
+```
+
+
+LOESS: very large confidence intervall needed and the form of the regression does not seem to be logical (why should the effort fall again at the end?)
+GAM: R²-value of 0.72 even worse than the one of the linear regression.
+conclusion: both not very helpful.
+
+
+## Residual analysis
+Aim: Look at the residuals of both linear regressions to evaluate them better. 
+
+1. for all middle-hall buildings:
+
+First plot visualises the residuals on the original plot. 
+
+Residuals vs Fitted plot shows theres a linear relationship -> showing this regression is not a good fit. 
+
+```{r analyse residuals of lin. regression of all middle-hall buildings}
+# following the hints of https://www.r-bloggers.com/visualising-residuals/
+
+# 1. all middle-hall buildings
+
+fit <- lm(summe_aufwand ~ summe_volumen, data = aufwand_MSG)  # Fit the model: predicted value ~ x-Achsen-value
+
+aufwand_MSGfit <- aufwand_MSG
+
+aufwand_MSGfit$predicted <- predict(fit)   # Save the predicted values
+aufwand_MSGfit$residuals <- residuals(fit) # Save the residual values
+
+ggplot(aufwand_MSGfit, aes(x = summe_volumen, y = summe_aufwand)) + 
+  geom_point() +
+  geom_point(aes(x = summe_volumen, y = predicted), shape = 1) +  # Add the predicted values
+  geom_segment(aes(xend = summe_volumen, yend = predicted), # lines between predicted and true values
+               alpha = .2) +  # alpha to fade lines  
+  geom_point(aes(color = residuals)) +  # Color mapped here
+  scale_color_gradient2(low = "blue", mid = "white", high = "red") +  # Colors to use here
+  guides(color = FALSE) + # we dont need a legend
+  geom_smooth(method = "lm", se = FALSE, color = "lightgrey")   # Plot regression slope
+
+summary(fit)
+
+plot(fit)
+```
+
+2. for the middle-hall buildings without the stone-cone building
+
+First plot visualises the residuals on the original plot. Then typical residual-analysis. 
+
+Conclusion: much better, resdiduals much smaller and not in a linear relationship with fitted values. 
+
+```{r residual analysis of linear regression for middle hall buildings without the stone cone building}
+
+
+fit2 <- lm(summe_aufwand ~ summe_volumen, data = aufwand_MSG_oSSG)  # Fit the model
+
+aufwand_MSG_oSSGfit <- aufwand_MSG_oSSG
+
+aufwand_MSG_oSSGfit$predicted <- predict(fit2)   # Save the predicted values
+aufwand_MSG_oSSGfit$residuals <- residuals(fit2) # Save the residual values
+
+
+ggplot(aufwand_MSG_oSSGfit, aes(x = summe_volumen, y = summe_aufwand)) +
+  geom_point() +
+  geom_point(aes(x = summe_volumen, y = predicted), shape = 1) +  # Add the predicted values
+  geom_segment(aes(xend = summe_volumen, yend = predicted),
+               alpha = .2) +  # alpha to fade lines 
+  geom_point(aes(color = residuals)) +  # Color mapped here
+  scale_color_gradient2(low = "blue", mid = "white", high = "red") +  # Colors to use here
+  guides(color = FALSE) +
+  geom_smooth(method = "lm", se = FALSE, color = "lightgrey")+           # Plot regression slope
+       
+  geom_label_repel(aes(x = summe_volumen,  # label the points
+                        y = summe_aufwand,
+                       label = uebersicht.X),
+                   box.padding = 0.35,             # bounding box of label
+                   point.padding = 0.5,
+                   size = 5,
+                   nudge_x = 0,
+                   nudge_y = 0.05,                 
+                   direction = "y")
+
+summary(fit2)
+
+plot(fit2)
+
+```
+
+
+
+##### pagebreak
+
+### Colophon
+
+This report was generated on `r Sys.time()` using the following computational environment and dependencies: 
+
+```{r colophon, cache = FALSE}
+# which R packages and versions?
+devtools::session_info()
+```
+
+The current Git commit details are:
+
+```{r}
+# what commit is this file at? 
+git2r::repository("../..")
+```

@@ -1,0 +1,10 @@
+Package: monumbers
+Title: Code and data to the calculations described in article "Monumentality by Numbers"
+Version: 0.0.0.9000
+Authors@R: person("Sophie", "Schmidt", email = "s.c.schmidt@uni-koeln.de", role = c("aut", "cre"))
+Description:This R package offers the code and data to the calculations described in: Hageneuer, S. / Schmidt, S., Monumentality by Numbers, in: Size Matters - Understanding Monumentality across ancient Civilizations (to be published in the transcript-Verlag Bielefeld).
+Depends: R (>= 3.4.3)
+License: MIT License
+Encoding: UTF-8
+LazyData: true
+Imports: bookdown, tidyverse, ggrepel, ggpmisc, RColorBrewer, reshape2, scales, mgcv
