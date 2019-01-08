@@ -416,7 +416,18 @@ plot(fit2)
 
 ```
 
+3. How much does the Stone-Cone Building differ from the "other" tripartite building linear model?
+```
 
+# first: get the two values: the expected value of the stone-cone building on the linear model calculated without it
+expSSGaufwand <- -112 + 3.44*aufwand_MSG[9,12] # this is the formula of the linear model without the stone-cone building times the mass to get to expected effort
+realSSGaufwand <- aufwand_MSG[9,22] # this is the value of the real effort
+
+# two values for comparison
+diffSSGaufwand<- realSSGaufwand - expSSGaufwand
+divSSGaufwand <- realSSGaufwand/expSSGaufwand
+
+```
 
 ##### pagebreak
 
