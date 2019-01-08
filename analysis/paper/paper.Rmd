@@ -86,7 +86,7 @@ aufwand$summe_aufwand <- aufwand$Lehm + aufwand$Schilf + aufwand$Farblehm  + auf
 
 
 # Analyse the middle-hall buildings quantitatively
-Aim of the following code chunk: We subsetted a larger data frame for just the middle-hall buildings. Calculations later showed we need the data frame of middle-hall buildings without the stone cone building as well.
+Aim of the following code chunk: We subsetted a larger data frame for just the tripartite buildings. Calculations later showed we need the data frame of tripartite buildings without the stone cone building as well.
 
 
 
@@ -141,7 +141,7 @@ ggsave("../figures/Mittelsaalgebaeude_MASSE.eps", width = 20, height = 15, units
 
 
 ## How much effort do the materials imply?
-Aim: Create a stacked bar plot, in which we can see the effort of the different materials used for each building.Percentage used so the stack shows composition of material effort without regard to absolute size of the building.
+Aim: Create a stacked bar plot, in which we can see the effort of the different materials used for each building. Percentage used so the stack shows composition of material effort without regard to absolute size of the building.
 
 ```{r Compare different amounts of effort regarding material}
 
@@ -278,7 +278,7 @@ ggsave("../figures/Mittelsaalgebäude_vgl.eps", width = 20, height = 20, units =
  
 
 ## Non-linear regressions
-Aim: Test different non-linear regressions in comparison to linear regression model (of all middle-hall buildings). Two chosen: LOESS because it supposedly doesn't weigh outliers so much (Baxter 2015: 80-82) and GAM, with a relative simple y ~ poly(x, 2)-formula. Visualisation and summary of both methods for evaluation.
+Aim: Test different non-linear regressions in comparison to linear regression model (of all tripartite buildings). Two chosen: LOESS because it supposedly doesn't weigh outliers so much (Baxter 2015: 80-82) and GAM, with a relative simple y ~ poly(x, 2)-formula. Visualisation and summary of both methods for evaluation.
 
 ```{r non-linear regression comparison}
 # comparison of different regressions of all middle hall buildings
@@ -340,16 +340,16 @@ conclusion: both not very helpful.
 ## Residual analysis
 Aim: Look at the residuals of both linear regressions to evaluate them better. 
 
-1. for all middle-hall buildings:
+1. for all tripartite buildings:
 
 First plot visualises the residuals on the original plot. 
 
 Residuals vs Fitted plot shows theres a linear relationship -> showing this regression is not a good fit. 
 
-```{r analyse residuals of lin. regression of all middle-hall buildings}
+```{r analyse residuals of lin. regression of all tripartite buildings}
 # following the hints of https://www.r-bloggers.com/visualising-residuals/
 
-# 1. all middle-hall buildings
+# 1. all tripartite buildings
 
 fit <- lm(summe_aufwand ~ summe_volumen, data = aufwand_MSG)  # Fit the model: predicted value ~ x-Achsen-value
 
@@ -373,13 +373,13 @@ summary(fit)
 plot(fit)
 ```
 
-2. for the middle-hall buildings without the stone-cone building
+2. for the tripartite buildings without the stone-cone building
 
 First plot visualises the residuals on the original plot. Then typical residual-analysis. 
 
 Conclusion: much better, resdiduals much smaller and not in a linear relationship with fitted values. 
 
-```{r residual analysis of linear regression for middle hall buildings without the stone cone building}
+```{r residual analysis of linear regression for tripartite buildings without the stone cone building}
 
 
 fit2 <- lm(summe_aufwand ~ summe_volumen, data = aufwand_MSG_oSSG)  # Fit the model
