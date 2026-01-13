@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this compendium, please cite it as below."
+authors:
+  - family-names: Schmidt
+    given-names: Sophie C.
+    orcid: https://orcid.org/0000-0003-4696-2101
+title: monumbers
+version: 0.1
+doi: 10.5281/zenodo.18233376
+date-released: 2026-01-13
+url: "https://github.com/SCSchmidt/monumbers"
+preferred-citation:
+  type: inproceedings
+  authors:
+  - family-names: Hageneuer
+    given-names: Sebastian
+    orcid: https://orcid.org/0000-0001-8973-1544
+  - family-names: Schmidt
+    given-names: Sophie C.
+    orcid: https://orcid.org/0000-0003-4696-2101
+  editors:
+  - family name: Buccellati
+    given name: Federico
+  - family-names: Hageneuer
+    given-names: Sebastian
+ - family name: van der Heyden
+   given name: Sylvia
+  - family-names: Levenson
+    given-names: Felix
+ doi: 10.14361/9783839445389-017
+ publication: "Size Matters - Understanding Monumentality Across Ancient Civilizations"
+ start: 291 # First page number
+ end: 308 # Last page number
+ title: "Monumentality by numbers"
+ year: 2019
